@@ -6,10 +6,11 @@ HORIZONTAL=1920
 VERTICAL=1080
 WIDTH=10
 HEIGHT=10
-HEXLENGTH=10
 COLS=HORIZONTAL//HEIGHT
 ROWS=VERTICAL//WIDTH
 QUIT=False
+ANT_STEPS=100000
+LIFE_STEPS=2000
 
 def ant(screen,font):
    rule=[]
@@ -29,7 +30,7 @@ def ant(screen,font):
    step=0
    if not display([(antCol,antRow,getColor(0))],screen,font,info,step,5):
       return
-   while step<100000:
+   while step<ANT_STEPS:
       step+=1
       antDir=antDirection(antCol,antRow,antDir,grid,rule)
       grid[antCol][antRow]+=1
@@ -123,11 +124,11 @@ def wolfram(screen,font):
             grid[col][step]=rule[7]
          if grid[col][step]==1:
             changes.append((col,step,getColor(0)))
-      if display(changes,screen,font,'Rule '+str(info),step,1):
+      if not display(changes,screen,font,'Rule '+str(info),step,1):
          return
 
 def life(screen,font):
-   generateLife(screen,font,random.randint(0,10),None)
+   generateLife(screen,font,random.randint(0,6),None)
   
 def maze(screen,font):
    type=random.randint(0,2)
@@ -348,7 +349,7 @@ def generateLife(screen,font,lifeLike,forceInfo):
    step=0
    if not display([(coords[0],coords[1],getColor(0)) for coords in seed],screen,font,info,step,1):
       return True
-   while step<2000:
+   while step<LIFE_STEPS:
       time.sleep(.01)
       if not forceInfo:
          step+=1
@@ -422,28 +423,6 @@ def getLifeLike(type):
       return 'B3/S12345'
 
 def display(changes,screen,font,info,step,skip):
-   for event in pygame.event.get():
-      if event.type==pygame.QUIT:
-         global QUIT
-         QUIT=True
-         return False
-   for (col,row,color) in changes:
-      pygame.draw.rect(screen,color,(col*WIDTH,row*HEIGHT,WIDTH,HEIGHT))
-   infoText=font.render(info,True,getColor(0))
-   infoRect=infoText.get_rect()
-   infoRect.topleft=(0,0)
-   stepText=font.render(str(step),True,getColor(0))
-   stepRect=stepText.get_rect()
-   stepRect.topleft=(0,18)
-   pygame.draw.rect(screen,getColor(1),infoRect)
-   pygame.draw.rect(screen,getColor(1),stepRect)
-   screen.blit(infoText,infoRect)
-   screen.blit(stepText,stepRect)
-   if step%skip==0:
-      pygame.display.flip()
-   return True
-
-def displayHex(changes,screen,font,info,step,skip):
    for event in pygame.event.get():
       if event.type==pygame.QUIT:
          global QUIT
