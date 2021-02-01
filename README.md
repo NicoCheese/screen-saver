@@ -11,3 +11,5 @@ Various pathfinding algorithms over life-like cellular automata
 ![](maze.gif)
 N-body gravity and inelastic collision simulation
 ![](gravity.gif)
+World-building cellular automata thing
+![](world.gif)
