@@ -9,7 +9,7 @@ pygame.mouse.set_visible(False)
 pygame.display.set_caption("ScreenSaverThingy")
 HORIZONTAL=1920
 VERTICAL=1080
-SCREEN=pygame.display.set_mode([HORIZONTAL,VERTICAL],pygame.FULLSCREEN)
+SCREEN=pygame.display.set_mode([HORIZONTAL,VERTICAL],pygame.NOFRAME)
 FONT=pygame.font.SysFont("hack",15)
 COLORS=[]
 COLORS.append((255,255,255)) # White
@@ -32,22 +32,29 @@ COLORS.append((127,0,255)) # Violet
 COLORS.append((127,255,0)) # Chartreuse
 COLORS.append((0,127,255)) # Azure
 COLORS.append((255,0,127)) # Pink
+COLORS.append((40,80,60)) # Forest
+COLORS.append((80,100,70)) # Grassland
+COLORS.append((170,150,130)) # Desert
+COLORS.append((60,80,140)) # Shallow water
+COLORS.append((20,40,100)) # Deep water
 NEIGHBORS={} # Lookup table for life-like cellular automata adjacent cells
-for col in range(HORIZONTAL//10):
-   for row in range(VERTICAL//10):
-      left=col-1
-      if left<0:
-         left=HORIZONTAL//10-1
-      right=col+1
-      if right>=HORIZONTAL//10:
-         right=0
-      top=row-1
-      if top<0:
-         top=VERTICAL//10-1
-      bottom=row+1
-      if bottom>=VERTICAL//10:
-         bottom=0
-      NEIGHBORS[(col,row)]=((left,top),(left,row),(left,bottom),(col,top),(col,bottom),(right,top),(right,row),(right,bottom))
+for x in range(HORIZONTAL//10):
+   for y in range(VERTICAL//10):
+      neighbors=[]
+      for xNeighbor in range(x-1,x+2):
+         for yNeighbor in range(y-1,y+2):
+            if xNeighbor!=x or yNeighbor!=y:
+               neighbors.append((xNeighbor%(HORIZONTAL//10),yNeighbor%(VERTICAL//10)))
+      NEIGHBORS[(x,y)]=tuple(neighbors)
+CITYNEIGHBORS={} # Lookup table for cellular automata using an extended Moore neighborhood (no wrap)
+for x in range(HORIZONTAL//10):
+   for y in range(VERTICAL//10):
+      neighbors=[]
+      for xNeighbor in range(x-2,x+3):
+         for yNeighbor in range(y-2,y+3):
+            if (xNeighbor!=x or yNeighbor!=y) and xNeighbor>=0 and xNeighbor<HORIZONTAL//10 and yNeighbor>=0 and yNeighbor<VERTICAL//10:
+               neighbors.append((xNeighbor,yNeighbor))
+      CITYNEIGHBORS[(x,y)]=tuple(neighbors)
 LIFELIKE=[] # Some of the nicer looking life-like cellular automata rule sets
 LIFELIKE.append(([1,1,1,1,1,1,1,1,1],[0,0,0,1,0,0,0,0,0])) # B3/S012345678
 LIFELIKE.append(([0,0,1,1,0,0,0,0,0],[0,0,0,1,0,0,0,0,0])) # B3/S23
@@ -72,12 +79,12 @@ def ant():
       else: # Smallest chance for cardinal directions
          rule.append(random.randint(4,7))
    info=''.join(['L' if i==0 else 'R' if i==1 else 'F' if i==2 else 'B' if i==3 else 'N' if i==4 else 'E' if i==5 else 'S' if i==6 else 'W' for i in rule])
-   grid=[[1 for row in range(VERTICAL//10)] for col in range(HORIZONTAL//10)]
+   grid=[[1 for y in range(VERTICAL//10)] for x in range(HORIZONTAL//10)]
    antCol=HORIZONTAL//10//2
    antRow=VERTICAL//10//2
    antDir=0
    step=0
-   displaySquare([(antCol,antRow,0)],info,step,5)
+   displaySquare([(antCol,antRow,0)],info,0,5)
    while step<100000:
       step+=1
       antDir=antDirection(antDir,rule,grid[antCol][antRow]-1)
@@ -126,36 +133,36 @@ def wolfram():
    rule=random.randint(0,255)
    info=f'Rule {rule}'
    rule=[int(i) for i in bin(rule)[2:].zfill(8)]
-   grid=[[0 for row in range(VERTICAL//10)] for col in range(HORIZONTAL//10)]
+   grid=[[0 for y in range(VERTICAL//10)] for x in range(HORIZONTAL//10)]
    step=0
    searchType=random.randint(0,2)
    if searchType==0:
       grid[HORIZONTAL//10//2][step]=1
    elif searchType==1:
-      for col in range(random.randint(2,5)):
+      for x in range(random.randint(2,5)):
          grid[random.randint(0,HORIZONTAL//10)][step]=1
    else:
-      for col in range(HORIZONTAL//10):
-         grid[col][step]=random.randint(0,1)
-   displaySquare([(col,step,0) for col in range(HORIZONTAL//10) if grid[col][step]==1],info,step,1)
+      for x in range(HORIZONTAL//10):
+         grid[x][step]=random.randint(0,1)
+   displaySquare([(x,step,0) for x in range(HORIZONTAL//10) if grid[x][step]==1],info,step,1)
    while step<VERTICAL//10-1:
       time.sleep(.1)
       step+=1
       changes=[]
-      for col in range(HORIZONTAL//10):
+      for x in range(HORIZONTAL//10):
          pattern=''
-         if col==0:
+         if x==0:
             pattern+=str(grid[HORIZONTAL//10-1][step-1])
          else:
-            pattern+=str(grid[col-1][step-1])
-         pattern+=str(grid[col][step-1])
-         if col==HORIZONTAL//10-1:
+            pattern+=str(grid[x-1][step-1])
+         pattern+=str(grid[x][step-1])
+         if x==HORIZONTAL//10-1:
             pattern+=str(grid[0][step-1])
          else:
-            pattern+=str(grid[col+1][step-1])
-         grid[col][step]=rule[7-int(pattern,2)]
-         if grid[col][step]==1:
-            changes.append((col,step,0))
+            pattern+=str(grid[x+1][step-1])
+         grid[x][step]=rule[7-int(pattern,2)]
+         if grid[x][step]==1:
+            changes.append((x,step,0))
       displaySquare(changes,info,step,1)
 
 def life():
@@ -171,7 +178,7 @@ def life():
    grid=generateSeed(lifeType)
    changeSet=set()
    step=0
-   displaySquare([(col,row,grid[col][row][0]) for col in range(HORIZONTAL//10) for row in range(VERTICAL//10)],info,step,1)
+   displaySquare([(x,y,grid[x][y][0]) for y in range(VERTICAL//10) for x in range(HORIZONTAL//10)],info,0,1)
    while step<2000:
       time.sleep(.01)
       step+=1
@@ -192,7 +199,7 @@ def maze():
    lifeType=random.randint(7,10)
    grid=generateSeed(lifeType)
    changeSet=set()
-   displaySquare([(col,row,grid[col][row][0]) for col in range(HORIZONTAL//10) for row in range(VERTICAL//10)],info,0,1)
+   displaySquare([(x,y,grid[x][y][0]) for y in range(VERTICAL//10) for x in range(HORIZONTAL//10)],info,0,1)
    while True: # Maze-type cellular automata will eventually settle or loop
       time.sleep(.01)
       changes=stepLife(grid,lifeType)
@@ -202,19 +209,19 @@ def maze():
       displaySquare([(change[0],change[1],change[2]) for change in changes],info,0,1)
    possibleStarts=set()
    possibleEnds=set()
-   for col in range(HORIZONTAL//10):
-      for row in range(VERTICAL//10):
-         if col!=0 and row!=0 and col!=HORIZONTAL//10-1 and row!=VERTICAL//10-1:
-            grid[col][row]=grid[col][row][0] # Can disregard neighbor count now
-            if not grid[col][row]: # Also looks for possible start and end positions
-               if col<10:
-                  possibleStarts.add((col,row))
-               elif col>=HORIZONTAL//10-10:
-                  possibleEnds.add((col,row))
+   for x in range(HORIZONTAL//10):
+      for y in range(VERTICAL//10):
+         if x!=0 and y!=0 and x!=HORIZONTAL//10-1 and y!=VERTICAL//10-1:
+            grid[x][y]=grid[x][y][0] # Can disregard neighbor count now
+            if not grid[x][y]: # Also looks for possible start and end positions
+               if x<10:
+                  possibleStarts.add((x,y))
+               elif x>=HORIZONTAL//10-10:
+                  possibleEnds.add((x,y))
          else: # Constrains the maze edges so the taxicab heuristic works
-            grid[col][row]=1
-            displaySquare([(col,row,1)],info,0,1)
-   displaySquare([(col,row,grid[col][row]) for col in range(HORIZONTAL//10) for row in range(VERTICAL//10)],info,0,1)
+            grid[x][y]=1
+            displaySquare([(x,y,1)],info,0,1)
+   displaySquare([(x,y,grid[x][y]) for y in range(VERTICAL//10) for x in range(HORIZONTAL//10)],info,0,1)
    if not possibleStarts or not possibleEnds:
       return
    start=random.choice([*possibleStarts])
@@ -316,12 +323,12 @@ def maze():
 
 def stepLife(grid,lifeType): # Steps the grid and returns changes
    changes=[]
-   for col in range(HORIZONTAL//10): # Make sure to find the changes...
-      for row in range(VERTICAL//10):
-         if not grid[col][row][0] and not LIFELIKE[lifeType][0][grid[col][row][1]]:
-            changes.append((col,row,1))
-         elif grid[col][row][0] and LIFELIKE[lifeType][1][grid[col][row][1]]:
-            changes.append((col,row,0))
+   for x in range(HORIZONTAL//10): # Make sure to find the changes...
+      for y in range(VERTICAL//10):
+         if not grid[x][y][0] and not LIFELIKE[lifeType][0][grid[x][y][1]]:
+            changes.append((x,y,1))
+         elif grid[x][y][0] and LIFELIKE[lifeType][1][grid[x][y][1]]:
+            changes.append((x,y,0))
    for change in changes: # ...then execute them
       grid[change[0]][change[1]][0]=change[2]
       for neighbor in NEIGHBORS[(change[0],change[1])]:
@@ -337,26 +344,26 @@ def generateSeed(lifeType): # Generates an "interesting" grid for cellular autom
       seed=[]
       seedType=random.randint(0,2) 
       if seedType==0: # Fill the grid with ~half live and ~half dead cells
-         for col in range(HORIZONTAL//10):
-            for row in range(VERTICAL//10):
+         for x in range(HORIZONTAL//10):
+            for y in range(VERTICAL//10):
                if random.random()<.5:
-                  seed.append((col,row))
+                  seed.append((x,y))
       elif seedType==1: # Only populates a small box in the center with half live/half dead
-         for col in range(HORIZONTAL//10//2-1,HORIZONTAL//10//2+2):
-            for row in range(VERTICAL//10//2-1,VERTICAL//10//2+2):
+         for x in range(HORIZONTAL//10//2-1,HORIZONTAL//10//2+2):
+            for y in range(VERTICAL//10//2-1,VERTICAL//10//2+2):
                if random.random()<.5:
-                  seed.append((col,row))
+                  seed.append((x,y))
       else: # Populates a larger box with half live/half dead
-         for col in range(HORIZONTAL//10//2-10,HORIZONTAL//10//2+11):
-            for row in range(VERTICAL//10//2-10,VERTICAL//10//2+11):
+         for x in range(HORIZONTAL//10//2-10,HORIZONTAL//10//2+11):
+            for y in range(VERTICAL//10//2-10,VERTICAL//10//2+11):
                if random.random()<.5:
-                  seed.append((col,row))
-      grid=[[[1,0] for row in range(VERTICAL//10)] for col in range(HORIZONTAL//10)]
+                  seed.append((x,y))
+      grid=[[[1,0] for y in range(VERTICAL//10)] for x in range(HORIZONTAL//10)]
       for coords in seed:
          grid[coords[0]][coords[1]][0]=0
          for neighbor in NEIGHBORS[(coords[0],coords[1])]:
             grid[neighbor[0]][neighbor[1]][1]+=1
-      testGrid=[[grid[col][row][:] for row in range(VERTICAL//10)] for col in range(HORIZONTAL//10)]
+      testGrid=[[grid[x][y][:] for y in range(VERTICAL//10)] for x in range(HORIZONTAL//10)]
       changeSet=set()
       regenerate=False
       for step in range(250): # Ensures the grid remains "interesting" for at least 250 steps
@@ -439,11 +446,150 @@ def gravity():
             planet[1]+=planet[3]
          displayCircle(prevDraw+[(planet[0],planet[1],(planet[4]/math.pi)**.5,0) for planet in planets],'Gravity',step,1)
       
+def world():
+   worldType=random.randrange(2)
+   if worldType==0:
+      info='Swamp'
+   else:
+      info='Archipelago'
+   grid=[[random.randrange(5) for y in range(VERTICAL//10)] for x in range(HORIZONTAL//10)]
+   changeSet=set()
+   step=0
+   displaySquare([(x,y,grid[x][y]+20) for y in range(VERTICAL//10) for x in range(HORIZONTAL//10)],info,0,1)
+   while True:
+      time.sleep(.1)
+      step+=1
+      changes=worldChanges(grid,worldType)
+      if tuple(changes) in changeSet:
+         break
+      changeSet.add(tuple(changes))
+      for change in changes:
+         grid[change[0]][change[1]]=change[2]
+      displaySquare([(change[0],change[1],change[2]+20) for change in changes],info,step,1) 
+   time.sleep(1)
+
+def worldChanges(grid,worldType):
+   changes=[]
+   if worldType==0: # Swamp
+      for x in range(HORIZONTAL//10):
+         for y in range(VERTICAL//10):
+            tile=grid[x][y]
+            count=[0]*7
+            for neighbor in CITYNEIGHBORS[(x,y)]:
+               count[grid[neighbor[0]][neighbor[1]]]+=1
+            if tile==0: # Forest
+               if count[0]>21:
+                  changes.append((x,y,4))
+               if count[1]>18:
+                  changes.append((x,y,1))
+               if count[2]>18:
+                  changes.append((x,y,2))
+               if count[3]+count[4]>15:
+                  changes.append((x,y,3))
+            if tile==1: # Grassland
+               if count[0]>18:
+                  changes.append((x,y,0))
+               if count[1]>21:
+                  changes.append((x,y,4))
+               if count[2]>18:
+                  changes.append((x,y,2))
+               if count[3]+count[4]>15:
+                  changes.append((x,y,3))
+            if tile==2: # Desert
+               if count[0]>18:
+                  changes.append((x,y,0))
+               if count[1]>18:
+                  changes.append((x,y,1))
+               if count[2]>21:
+                  changes.append((x,y,4))
+               if count[3]+count[4]>15:
+                  changes.append((x,y,3))
+            if tile==3: # Shallow water
+               if count[3]>4:
+                  if count[0]>9:
+                     changes.append((x,y,0))
+                  if count[1]>9:
+                     changes.append((x,y,1))
+                  if count[2]>9:
+                     changes.append((x,y,2))
+               if not count[0]+count[1]+count[2]:
+                  changes.append((x,y,4))
+            if tile==4: # Deep water
+               if count[0]+count[1]+count[2]:
+                  changes.append((x,y,3))
+               if count[3]:
+                  pass
+               if count[4]:
+                  pass
+            if len(CITYNEIGHBORS[(x,y)])<24:
+               changes.append((x,y,4))
+   else: # Archipelago
+      for x in range(HORIZONTAL//10):
+         for y in range(VERTICAL//10):
+            tile=grid[x][y]
+            count=[0]*7
+            for neighbor in CITYNEIGHBORS[(x,y)]:
+               count[grid[neighbor[0]][neighbor[1]]]+=1
+            if tile==0: # Forest
+               if count[0]:
+                  pass
+               if count[1]>18:
+                  changes.append((x,y,1))
+               if count[2]>18:
+                  changes.append((x,y,2))
+               if count[3]+count[4]>13:
+                  changes.append((x,y,3))
+            if tile==1: # Grassland
+               if count[0]>18:
+                  changes.append((x,y,0))
+               if count[1]:
+                  pass
+               if count[2]>18:
+                  changes.append((x,y,2))
+               if count[3]:
+                  pass
+               if count[3]+count[4]>13:
+                  changes.append((x,y,3))
+            if tile==2: # Desert
+               if count[0]>18:
+                  changes.append((x,y,0))
+               if count[1]>18:
+                  changes.append((x,y,1))
+               if count[2]:
+                  pass
+               if count[3]:
+                  pass
+               if count[3]+count[4]>13:
+                  changes.append((x,y,3))
+            if tile==3: # Shallow water
+               if count[0]>7:
+                  changes.append((x,y,0))
+               if count[1]>7:
+                  changes.append((x,y,1))
+               if count[2]>7:
+                  changes.append((x,y,2))
+               if count[4]>count[0]+count[1]+count[2]:
+                  changes.append((x,y,4))
+            if tile==4: # Deep water
+               if count[0]>13:
+                  changes.append((x,y,3))
+               if count[1]>13:
+                  changes.append((x,y,3))
+               if count[2]>13:
+                  changes.append((x,y,3))
+               if count[3]:
+                  pass
+               if count[4]:
+                  pass
+            if len(CITYNEIGHBORS[(x,y)])<24:
+               changes.append((x,y,4))
+   return changes
+
 def displaySquare(changes,info,step,skip):
    if pygame.QUIT in [event.type for event in pygame.event.get()]:
       sys.exit()
-   for (col,row,color) in changes:
-      pygame.draw.rect(SCREEN,COLORS[color],(col*10,row*10,10,10))
+   for (x,y,color) in changes:
+      pygame.draw.rect(SCREEN,COLORS[color],(x*10,y*10,10,10))
    infoText=FONT.render(info,True,COLORS[0])
    stepText=FONT.render(str(step),True,COLORS[0])
    infoRect=infoText.get_rect()
@@ -478,7 +624,7 @@ def displayCircle(changes,info,step,skip):
 while pygame.QUIT not in [event.type for event in pygame.event.get()]:
    pygame.draw.rect(SCREEN,COLORS[1],(0,0,HORIZONTAL,VERTICAL))
    pygame.display.flip()
-   game=random.randrange(5)
+   game=random.randrange(6)
    if game==0:
       ant()
    elif game==1:
@@ -487,5 +633,7 @@ while pygame.QUIT not in [event.type for event in pygame.event.get()]:
       life()
    elif game==3:
       maze()
-   else:
+   elif game==4:
       gravity()
+   else:
+      world()
