@@ -419,8 +419,8 @@ def gravity():
          for planetB in planets:
             if planetA!=planetB:
                inverseSquare=1/((planetA[0]-planetB[0])**2+(planetA[1]-planetB[1])**2)
-               angle=math.atan((planetA[1]-planetB[1])/(planetA[0]-planetB[0])) if planetA[0]!=planetB[0] else math.pi # Special case for same x
-               if planetA[0]>planetB[0]:
+               angle=math.atan((planetA[1]-planetB[1])/(planetA[0]-planetB[0])) if planetA[0]!=planetB[0] else math.pi/2 # Special case for same x
+               if planetA[0]>planetB[0] or planetA[0]==planetB[0] and planetA[1]>planetB[1]:
                   angle+=math.pi
                planetA[2]+=math.cos(angle)*inverseSquare*planetB[4]*2
                planetA[3]+=math.sin(angle)*inverseSquare*planetB[4]*2
@@ -517,10 +517,6 @@ def worldChanges(grid,worldType):
             if tile==4: # Deep water
                if count[0]+count[1]+count[2]:
                   changes.append((x,y,3))
-               if count[3]:
-                  pass
-               if count[4]:
-                  pass
             if len(CITYNEIGHBORS[(x,y)])<24:
                changes.append((x,y,4))
    else: # Archipelago
@@ -531,8 +527,6 @@ def worldChanges(grid,worldType):
             for neighbor in CITYNEIGHBORS[(x,y)]:
                count[grid[neighbor[0]][neighbor[1]]]+=1
             if tile==0: # Forest
-               if count[0]:
-                  pass
                if count[1]>18:
                   changes.append((x,y,1))
                if count[2]>18:
@@ -542,12 +536,8 @@ def worldChanges(grid,worldType):
             if tile==1: # Grassland
                if count[0]>18:
                   changes.append((x,y,0))
-               if count[1]:
-                  pass
                if count[2]>18:
                   changes.append((x,y,2))
-               if count[3]:
-                  pass
                if count[3]+count[4]>13:
                   changes.append((x,y,3))
             if tile==2: # Desert
@@ -555,10 +545,6 @@ def worldChanges(grid,worldType):
                   changes.append((x,y,0))
                if count[1]>18:
                   changes.append((x,y,1))
-               if count[2]:
-                  pass
-               if count[3]:
-                  pass
                if count[3]+count[4]>13:
                   changes.append((x,y,3))
             if tile==3: # Shallow water
@@ -577,13 +563,57 @@ def worldChanges(grid,worldType):
                   changes.append((x,y,3))
                if count[2]>13:
                   changes.append((x,y,3))
-               if count[3]:
-                  pass
-               if count[4]:
-                  pass
             if len(CITYNEIGHBORS[(x,y)])<24:
                changes.append((x,y,4))
    return changes
+
+def balls():
+   balls=[]
+   for ball in range(random.randrange(3,30)):
+      balls.append([random.randrange(200,HORIZONTAL-200),random.randrange(200,VERTICAL-200),random.randrange(3)-1,random.randrange(3)-1,random.randrange(20,100)])
+   prevDraw=[(ball[0],ball[1],ball[4],1) for ball in balls]
+   step=0
+   displayCircle(prevDraw+[(ball[0],ball[1],ball[4],0) for ball in balls],'Balls',0,1)
+   while step<15000:
+      step+=1
+      prevDraw=[(ball[0],ball[1],ball[4],1) for ball in balls]
+      for (index,ballA) in enumerate(balls):
+         for ballB in balls[index+1:]:
+            if ((ballA[0]-ballB[0])**2+(ballA[1]-ballB[1])**2)**.5<ballA[4]+ballB[4]: # Ugly elastic collision math
+               massA=ballA[4]**2*math.pi
+               massB=ballB[4]**2*math.pi
+               vA=(ballA[2]**2+ballA[3]**2)**.5
+               vB=(ballB[2]**2+ballB[3]**2)**.5
+               angleA=(math.atan(ballA[3]/ballA[2]) if ballA[2]!=0 else math.pi/2)+(math.pi if ballA[2]<0 else 0)
+               angleB=(math.atan(ballB[3]/ballB[2]) if ballB[2]!=0 else math.pi/2)+(math.pi if ballB[2]<0 else 0)
+               contact=(math.atan((ballA[1]-ballB[1])/(ballA[0]-ballB[0])) if ballA[0]!=ballB[0] else math.pi/2)+(math.pi if ballA[0]>ballB[0] else 0)
+               ballA[2]=(vA*math.cos(angleA-contact)*(massA-massB)+2*massB*vB*math.cos(angleB-contact))*math.cos(contact)/(massA+massB)
+               ballA[2]+=vA*math.sin(angleA-contact)*math.cos(contact+math.pi/2)
+               ballA[3]=(vA*math.cos(angleA-contact)*(massA-massB)+2*massB*vB*math.cos(angleB-contact))*math.sin(contact)/(massA+massB)
+               ballA[3]+=vA*math.sin(angleA-contact)*math.sin(contact+math.pi/2)
+               ballB[2]=(vB*math.cos(angleB-contact)*(massB-massA)+2*massA*vA*math.cos(angleA-contact))*math.cos(contact)/(massA+massB)
+               ballB[2]+=vB*math.sin(angleB-contact)*math.cos(contact+math.pi/2)
+               ballB[3]=(vB*math.cos(angleB-contact)*(massB-massA)+2*massA*vA*math.cos(angleA-contact))*math.sin(contact)/(massA+massB)
+               ballB[3]+=vB*math.sin(angleB-contact)*math.sin(contact+math.pi/2)
+               ballA[0]=ballB[0]-math.cos(contact)*(ballA[4]+ballB[4])
+               ballA[1]=ballB[1]-math.sin(contact)*(ballA[4]+ballB[4])
+      for ball in balls: # Apply gravity and velocity
+         ball[3]+=.005 # Kinda arbitrary
+         ball[0]+=ball[2]
+         ball[1]+=ball[3]
+         if ball[0]-ball[4]<0:
+            ball[2]*=-1
+            ball[0]=ball[4] # Make sure to snap it up so it doesn't get stuck in floor
+         elif ball[0]+ball[4]>=HORIZONTAL:
+            ball[2]*=-1
+            ball[0]=HORIZONTAL-ball[4]
+         if ball[1]-ball[4]<0:
+            ball[3]*=-1
+            ball[1]=ball[4]
+         elif ball[1]+ball[4]>=VERTICAL:
+            ball[3]*=-1
+            ball[1]=VERTICAL-ball[4]
+      displayCircle(prevDraw+[(ball[0],ball[1],ball[4],0) for ball in balls],'Balls',step,1)
 
 def displaySquare(changes,info,step,skip):
    if pygame.QUIT in [event.type for event in pygame.event.get()]:
@@ -635,5 +665,7 @@ while pygame.QUIT not in [event.type for event in pygame.event.get()]:
       maze()
    elif game==4:
       gravity()
-   else:
+   elif game==5:
       world()
+   else:
+      balls()
