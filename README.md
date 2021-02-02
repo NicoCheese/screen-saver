@@ -13,3 +13,5 @@ N-body gravity and inelastic collision simulation
 ![](gravity.gif)
 World-building cellular automata thing
 ![](world.gif)
+Bouncy balls!
+![](balls.gif)
