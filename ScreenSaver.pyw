@@ -654,7 +654,7 @@ def displayCircle(changes,info,step,skip):
 while pygame.QUIT not in [event.type for event in pygame.event.get()]:
    pygame.draw.rect(SCREEN,COLORS[1],(0,0,HORIZONTAL,VERTICAL))
    pygame.display.flip()
-   game=random.randrange(6)
+   game=random.randrange(7)
    if game==0:
       ant()
    elif game==1:
